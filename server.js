@@ -170,7 +170,7 @@ app.post('/meta-webhook', async (req, res) => {
     console.log(`[Meta→+${phone}] ${reply.slice(0,80)}…`);
 
     // Send reply back via Meta Graph API
-    await fetch(`https://graph.facebook.com/v19.0/${phoneNumId}/messages`, {
+    const sendRes = await fetch(`https://graph.facebook.com/v19.0/${phoneNumId}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -183,6 +183,15 @@ app.post('/meta-webhook', async (req, res) => {
         text: { body: reply },
       }),
     });
+    if (!sendRes.ok) {
+      const errBody = await sendRes.json().catch(() => ({}));
+      const errMsg  = errBody?.error?.message || sendRes.status;
+      if (String(errMsg).includes('Session has expired') || String(errMsg).includes('access token')) {
+        console.error('🔴 META TOKEN EXPIRED — go to developers.facebook.com and regenerate the access token, then update META_ACCESS_TOKEN on Railway.');
+      } else {
+        console.error(`Meta send failed [${sendRes.status}]:`, errMsg);
+      }
+    }
   } catch (e) {
     console.error('Meta webhook error:', e.message);
   }
